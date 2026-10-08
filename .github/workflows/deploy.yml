@@ -3,7 +3,7 @@ name: deploy
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, frkim-foundry-session-materials]
     paths:
       - 'src/**'
       - 'infra/**'
