@@ -31,6 +31,7 @@ flowchart LR
 | 3 | 00:25–00:40 | Agents | What we build with | Skip memory + Foundry IQ detail |
 | 4 | 00:40–00:55 | DEMO 1 — Foundry Guide | Build it | Skip the third prompt |
 | 5 | 00:55–01:05 | Observability, evaluations, safety, Control Plane | Observe & govern | Skip red-teaming detail |
+| D3 | extended track | DEMO 3 — Foundry capabilities (ten short demos) | Make it useful, safe, operable | 90-min format: 3.1 + one other |
 | 6 | 01:05–01:15 | AI Gateway + DEMO 2 | Govern at scale | Skip the MCP step |
 | 7 | 01:15–01:20 | Deploy & DevOps | Ship it | Show workflow run only |
 | 8 | 01:20–01:30 | Roadmap, resources, Q&A | Call to action | Keep at least 5 min of Q&A |
@@ -394,6 +395,108 @@ deployment pipeline.
 > quota? That's the job of an AI gateway.
 
 **⏱ Time check:** at 01:05 you are on the "AI Gateway" divider. Late → skip the red-teaming paragraph.
+
+---
+
+## D3 · DEMO 3 — Foundry capabilities (extended track, ≈ 45 min)
+
+**Goal:** Show, live and briefly, what you add around an agent to make it useful, safe and operable. Steps, code,
+expected results and fallbacks: [demo-runbook.md § Demo 3](demo-runbook.md#demo-3--foundry-capabilities-ten-short-demos).
+
+**When:** after section 5 in the extended format (shift sections 6–8 by the time you spend). In the 90-minute format,
+spend the section 5 "Evaluate" and "Protect" minutes on **3.1 Foundry IQ** plus one of 3.4, 3.7 or 3.10, and show the
+other Demo 3 slides for 20–30 seconds each.
+
+| # | Demo | Minutes | One line to land |
+| --- | --- | --- | --- |
+| 3.1 | Foundry IQ + Knowledge ★ | 6 | "Index once, retrieve agentically, share across agents — with citations." |
+| 3.2 | MCP and A2A | 4 | "MCP for tools, A2A for agents — credentials in connections, every hop traced." |
+| 3.3 | Model router | 3 | "One deployment, best-fit model per prompt — and you can see which one." |
+| 3.4 | Guardrails and prompt injection | 4 | "With tools, the attack surface is the tool response." |
+| 3.5 | Skills and reusable tools | 4 | "Curate once, publish a version, every agent consumes one endpoint." |
+| 3.6 | Durable and autonomous agents | 5 | "Autonomy = a trigger + an identity + durable state." |
+| 3.7 | Continuous observability | 4 | "Not just what happened — whether it's still good, every hour." |
+| 3.8 | Evaluation and optimization | 5 | "Measure every version; let the optimizer propose, you promote." |
+| 3.9 | LangGraph / Deep Agents / LangSmith | 4 | "Bring your framework; keep Foundry's identity, tracing and hosting." |
+| 3.10 | Human in the loop | 4 | "Approve the irreversible, automate the rest — durably." |
+
+**Script**
+
+`[SLIDE: "DEMO 3 — Foundry capabilities, live"]`
+
+> Demo 1 was one agent, end to end. Now let's put things around it — the pieces you need the week after the demo
+> works. Ten short demos; each one is a capability, and each one is labelled GA or preview.
+
+`[SLIDE: "3.1 · Foundry IQ"]` `[SWITCH: ai.azure.com → Build → Knowledge]`
+
+> Every agent question eventually becomes "can it answer from *our* content?" Foundry IQ is the answer: a knowledge
+> base on Azure AI Search, fed by knowledge sources — here three Zava documents. When I ask a question that spans two
+> documents, agentic retrieval plans sub-queries, runs them in parallel, reranks, and the agent answers with
+> citations. To the agent it's one MCP tool — the same pattern as Microsoft Learn in Demo 1 — and any number of agents
+> can share this knowledge base. The knowledge base object is GA; connecting it to agents is still preview.
+
+`[SLIDE: "3.2 · Connectivity"]`
+
+> Two open protocols. MCP gives agents tools; A2A lets an agent call another agent — this caller delegates to our
+> Learn expert. The credentials sit in project connections, not in the agent definition. Exposing your own agent over
+> A2A is preview and SDK-only today.
+
+`[SLIDE: "3.3 · Model router"]`
+
+> Instead of picking a model per call, deploy the model router and let it choose per prompt — balanced, quality, or
+> cost mode. Watch the model column: a greeting goes small, a reasoning question goes big. Pair it with evaluations so
+> the cheap route is proven good enough.
+
+`[SLIDE: "3.4 · Guardrails"]`
+
+> Two attacks. A direct jailbreak — blocked at user input by Prompt Shields, which is GA. And an indirect one: a
+> supplier document in our knowledge base hides an instruction in an HTML comment. The agent retrieves it, and the
+> tool-response control — preview — stops it from reaching the user. Defense in depth: scan tool responses, approve
+> side effects, and add content safety at the gateway.
+
+`[SLIDE: "3.5 · Skills and reusable tools"]`
+
+> Remember the cost calculation from Demo 1? Here it is as a skill — a SKILL.md — bundled in a toolbox with Microsoft
+> Learn and Code Interpreter. The platform team publishes a version; agents consume one MCP endpoint. Toolbox is GA,
+> skills are preview.
+
+`[SLIDE: "3.6 · Durable and autonomous agents"]`
+
+> Production agents run long and start on their own. A background response returns "queued" immediately and keeps
+> working. A routine runs an agent every weekday at seven with no one typing. Hosted agents run your own code in a
+> Foundry-managed sandbox with its own identity. And the Durable Task extension checkpoints agent state so it survives
+> restarts — that's what makes the next-to-last demo possible.
+
+`[SLIDE: "3.7 · Continuous observability"]`
+
+> Traces tell you what happened in one run. The monitor tab and continuous evaluation tell you, every hour, whether the
+> agent is still healthy — latency, tokens, success rate, and quality scored on a sample of live traffic. It's all
+> OpenTelemetry in the same Application Insights, so KQL works on agent spans too.
+
+`[SLIDE: "3.8 · Evaluation and optimization"]`
+
+> Same OpenAI-compatible evals API, with Foundry's evaluators: task adherence, intent resolution, tool-call accuracy on
+> ten questions against our agent. Compare two versions before promoting. Red-team before first exposure. Then let
+> the Prompt Optimizer and the Agent Optimizer propose better instructions — you review and promote.
+
+`[SLIDE: "3.9 · LangGraph, Deep Agents and LangSmith"]`
+
+> Not a framework lock-in. With langchain-azure-ai, a LangGraph agent and a Deep Agent run on the same Foundry model,
+> keyless, and their spans land next to our Foundry agents' spans. Wrap the graph in a host server and deploy it as a
+> Foundry hosted agent. Keep LangSmith if your team uses it.
+
+`[SLIDE: "3.10 · Human in the loop"]`
+
+> Autonomy needs brakes. The platform can pause an MCP call until someone approves it. Agent Framework can mark a
+> function — like issuing a refund — as always requiring approval, or pause a workflow step. And because the pending
+> request lives in a checkpoint, the approval can come three days later, at zero compute while waiting.
+
+**Transition → 6**
+> Ten capabilities, one project, one identity model. Now let's govern the traffic across all of it — that's the AI
+> gateway.
+
+**⏱ Time check:** in the extended format, Demo 3 ends about 45 minutes after it starts; if late, drop 3.3 and 3.9
+(their slides tell the story).
 
 ---
 

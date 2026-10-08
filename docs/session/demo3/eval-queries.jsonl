@@ -1,0 +1,10 @@
+{"query": "What is the difference between a Foundry resource and a Foundry project?"}
+{"query": "What is the difference between prompt agents and hosted agents in Microsoft Foundry Agent Service? Cite Microsoft Learn."}
+{"query": "Which API should I use to call a Foundry agent from Python: the Responses API or the Assistants API?"}
+{"query": "How do I authenticate to Microsoft Foundry from an Azure Container App without API keys?"}
+{"query": "Use Code Interpreter: 1,000 conversations per day, 2,000 input and 400 output tokens each, at $0.40 per 1M input and $1.60 per 1M output tokens. What is the 30-day cost?"}
+{"query": "What does the model router deployment do in Microsoft Foundry?"}
+{"query": "What is Foundry IQ and how does an agent use a knowledge base?"}
+{"query": "Which guardrail intervention points exist for agents in Microsoft Foundry?"}
+{"query": "How can I evaluate a Foundry agent before promoting a new version?"}
+{"query": "Name two ways to add human approval before an agent calls a tool."}

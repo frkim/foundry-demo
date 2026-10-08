@@ -88,13 +88,6 @@ Every call we just made lands in Run history: the time, the kind of run, the age
 calls, and status. I can sort by latency, or search for just the model comparisons. It's kept in memory for the demo.
 In production, the same signals live in Application Insights as OpenTelemetry traces.
 
-## theme
-
-<!-- Toggle to the dark theme, show the agent conversation, then toggle back to light. -->
-
-One last touch for the room: a dark theme that projects well on a big screen, and is remembered across visits. And
-back to light.
-
 ## closing
 
 <!-- About tab again. -->

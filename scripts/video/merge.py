@@ -28,7 +28,6 @@ CHAPTERS: dict[str, str] = {
     "ci-ask": "Code Interpreter cost calculation",
     "compare-ask": "Model compare: gpt-5.4-mini vs gpt-5.4-nano",
     "history": "Run history",
-    "theme": "Dark and light themes",
     "closing": "Recap",
 }
 

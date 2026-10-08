@@ -357,15 +357,6 @@ def scene_history(clock: SceneClock) -> None:
     search.fill("")
 
 
-def scene_theme(clock: SceneClock) -> None:
-    page = clock.page
-    click(page, by_test_id(page, "theme-toggle"))
-    page.wait_for_timeout(700)
-    click(page, by_test_id(page, "tab-agent"))
-    clock.at(0.8)
-    click(page, by_test_id(page, "theme-toggle"))
-
-
 def scene_closing(clock: SceneClock) -> None:
     page = clock.page
     click(page, by_test_id(page, "tab-about"))
@@ -383,7 +374,6 @@ SCENES: dict[str, Callable[[SceneClock], None]] = {
     "compare-ask": scene_compare_ask,
     "compare-result": scene_compare_result,
     "history": scene_history,
-    "theme": scene_theme,
     "closing": scene_closing,
 }
 

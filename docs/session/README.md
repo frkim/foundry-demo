@@ -7,7 +7,8 @@ demo app and the **AI Gateway** demo.
 | --- | --- | --- |
 | [pitch.md](pitch.md) | Elevator pitch, 2-minute pitch, catalog abstract, title options, audience, prerequisites, takeaways, call to action | Event submission, host intro, promotion |
 | [narrative.md](narrative.md) | Full timed talk track (8 sections, 00:00–01:30) with script, transitions, polls, and time checks | Rehearsal and delivery |
-| [demo-runbook.md](demo-runbook.md) | Step-by-step Demo 1 (Foundry Guide, 15 min) and Demo 2 (AI Gateway, 10 min), setup, fallbacks, reset | T-1 day dry run and on stage |
+| [demo-runbook.md](demo-runbook.md) | Step-by-step Demo 1 (Foundry Guide, 15 min), Demo 2 (AI Gateway, 10 min) and Demo 3 (ten short Foundry capability demos, 3–6 min each), setup, fallbacks, reset | T-1 day dry run and on stage |
+| [demo3/](demo3/README.md) | Demo 3 assets: knowledge-base documents (one with a deliberate prompt injection), evaluation queries, a sample skill | Demo 3 setup |
 | [qa-prep.md](qa-prep.md) | 27 anticipated questions with crisp, sourced answers and uncertainty flags | Q&A and hallway conversations |
 
 > **Fact hygiene.** Microsoft Foundry changes monthly. Statements in this kit are tied to a dated source; anything
@@ -26,6 +27,12 @@ demo app and the **AI Gateway** demo.
 | 6 | 01:05–01:15 | **AI Gateway (APIM)** — token limits, load balancing, MCP governance — **DEMO 2** | Talk + live demo |
 | 7 | 01:15–01:20 | Deploy & DevOps: Bicep + GitHub Actions + keyless | Talk + repo walk-through |
 | 8 | 01:20–01:30 | Roadmap, resources, Q&A | Talk + Q&A |
+
+**Demo 3 — Foundry capabilities** is a modular track of ten short demos: Foundry IQ + Knowledge, MCP/A2A
+connectivity, model router, guardrails and prompt injection, skills and reusable tools, durable and autonomous agents,
+continuous observability, evaluation and optimization, LangSmith/LangGraph/Deep Agents, and human in the loop. Run all
+of them after section 5 in an extended format (≈ 45 min), or show **3.1 Foundry IQ** plus one or two others inside the
+90 minutes.
 
 ```mermaid
 flowchart LR
@@ -50,6 +57,7 @@ flowchart LR
 | Deployment pipeline | `.github/workflows/deploy.yml` | Bicep deploy + image build + new Container Apps revision |
 | Recorded demo (offline fallback) | `docs/video/foundry-demo.mp4` (+ `.srt`) | Play from local disk — do not stream it |
 | AI Gateway demo | <https://github.com/frkim/apim-demo> | Deploy the day before; see Demo 2 |
+| Demo 3 assets | [`docs/session/demo3/`](demo3/README.md) | Knowledge-base documents, evaluation queries, sample skill |
 | AI Gateway labs (reference) | <https://github.com/Azure-Samples/AI-Gateway> | Labs to point the audience to |
 
 ## Prep checklist
@@ -82,6 +90,9 @@ flowchart LR
 
 - [ ] Full dry run of [Demo 1 and Demo 2](demo-runbook.md) on the **presentation laptop**, on the **venue network**
       if possible. Time each demo.
+- [ ] If you run Demo 3: complete its [pre-demo setup](demo-runbook.md#demo-3--pre-demo-setup-t-1-day) (model router
+      deployment, Azure AI Search + `zava-kb`, `demo-guardrail`, routine, continuous evaluation rule, pre-run
+      evaluation and optimizer) and dry-run the demos you selected.
 - [ ] Verify the agent in the Foundry portal (<https://ai.azure.com> → project `proj-foundrydemo-dev` → Agents →
       `foundry-guide`) and that traces arrive in Application Insights `appi-foundrydemo-dev`.
 - [ ] Re-validate apim-demo (`python -m ai_gateway chat`).
@@ -131,4 +142,5 @@ flowchart LR
 | `/health/ready` | 200, agent ready | Model compare still works live (no agent needed); play the video for agent chat |
 | One chat round-trip | Answer with tool chips in < 30 s | Video for Demo 1 |
 | apim-demo `chat` | Succeeds | Slides + architecture walk-through for Demo 2 |
+| Demo 3 — `demo-iq` answers with citations | Cited answer in the playground | Show the Demo 3 slides; use rehearsal screenshots for 3.1 |
 | Venue network | Stable | Phone hotspot → else video |

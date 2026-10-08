@@ -288,42 +288,29 @@ In production, the same signals live in
 Application Insights as OpenTelemetry traces.
 
 63
-00:04:10,614 --> 00:04:15,745
-One last touch for the room: a dark
-theme that projects well on a big screen,
-
-64
-00:04:15,795 --> 00:04:17,899
-and is remembered across visits.
-
-65
-00:04:17,949 --> 00:04:19,110
-And back to light.
-
-66
-00:04:22,922 --> 00:04:26,874
+00:04:10,522 --> 00:04:14,474
 To recap: a prompt agent in
 Microsoft Foundry Agent Service,
 
-67
-00:04:26,924 --> 00:04:32,010
+64
+00:04:14,524 --> 00:04:19,610
 grounded in Microsoft Learn through MCP,
 doing real math in Code Interpreter,
 
-68
-00:04:32,060 --> 00:04:36,412
+65
+00:04:19,660 --> 00:04:24,012
 called keylessly from Azure Container
 Apps, with every run traced.
 
-69
-00:04:36,462 --> 00:04:39,213
+66
+00:04:24,062 --> 00:04:26,813
 The source code, the Bicep infrastructure,
 
-70
-00:04:39,263 --> 00:04:44,749
+67
+00:04:26,863 --> 00:04:32,349
 and the GitHub Actions pipeline are all in
 the repository linked on the About page.
 
-71
-00:04:44,799 --> 00:04:46,083
+68
+00:04:32,399 --> 00:04:33,683
 Thanks for watching.

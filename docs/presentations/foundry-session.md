@@ -26,7 +26,7 @@ footer: 'Microsoft Foundry deep dive · October 2026 · github.com/frkim/foundry
 <!--
 [00:00 · Opening — 10 min block starts]
 Welcome everyone. Over the next 90 minutes we go from "what is Microsoft Foundry" to a governed agent running in production on Azure, built live from a public repo.
-Two demos anchor the session: the Foundry Guide agent, and an AI Gateway in front of Foundry with Azure API Management.
+Three demos anchor the session: the Foundry Guide agent, an AI Gateway in front of Foundry with Azure API Management, and a menu of short Foundry capability demos — Foundry IQ first.
 Everything you see is in github.com/frkim/foundry-demo, so you do not need to take notes on code.
 -->
 
@@ -88,11 +88,12 @@ Stress that the demos are keyless — managed identity and Entra ID only.
 </div>
 </div>
 
-<div class="callout violet mt">Two live demos, one public repo, zero API keys. Everything shown is reproducible from <strong>github.com/frkim/foundry-demo</strong>.</div>
+<div class="callout violet mt">Three live demos, one public repo, zero API keys. <strong>DEMO 3</strong> — ten short capability demos (Foundry IQ, MCP/A2A, model router, guardrails, skills, durable agents, observability, evaluation, LangGraph, human in the loop) — runs as an extended track, or pick two or three. Everything is reproducible from <strong>github.com/frkim/foundry-demo</strong>.</div>
 
 <!--
 [00:02] Walk the agenda quickly: roughly half concepts, half hands-on.
 Blocks 4 and 6 are live demos; if anything misbehaves we have a recorded fallback video in the repo.
+Demo 3 is modular: in the 90-minute format show Foundry IQ plus one or two capabilities the audience cares about; in the extended format run all ten after section 5.
 Timings are in the speaker notes of every section divider so you can keep pace.
 -->
 
@@ -1088,6 +1089,326 @@ For agents, assume the tool response is hostile: combine Foundry guardrails, gat
 Governance is where Foundry plugs into the rest of the Microsoft security stack. Control Plane is the central governance surface and can register external A2A agents.
 Entra Agent ID gives agents real identities with lifecycle and audit; Defender adds threat protection for agents in preview; Purview brings audit, DSPM for AI and eDiscovery through a single toggle.
 Flag the licensing change: agent discovery and posture in Defender moved to the Microsoft Agent 365 license on July 1, 2026.
+-->
+
+---
+
+<!-- _class: section -->
+<!-- _paginate: false -->
+
+<span class="num">D3</span>
+
+# DEMO 3 — Foundry capabilities, live
+
+Ten short demos around the agent: knowledge, connectivity, routing, safety, reuse, autonomy, observability, quality, open frameworks and human control.
+
+<span class="time">Extended track · ≈ 45 min · or pick 2–3 in the 90-minute format</span>
+
+<!--
+[Demo 3 — extended track. In the 90-minute format, run 3.1 Foundry IQ plus one or two demos that match the audience, and present the other slides in 30 seconds each.]
+Every demo runs on demo-* agents in the same project, never on the app's foundry-guide agent. Steps, code and fallbacks are in docs/session/demo-runbook.md, Demo 3.
+-->
+
+---
+
+# Demo 3 — the menu
+
+<div class="cols-4">
+  <div class="card"><h3>3.1 Foundry IQ ★</h3><p>Knowledge base, agentic retrieval, citations · 6'</p></div>
+  <div class="card cyan"><h3>3.2 MCP + A2A</h3><p>Tools and agents over open protocols · 4'</p></div>
+  <div class="card green"><h3>3.3 Model router</h3><p>One deployment, best-fit model per prompt · 3'</p></div>
+  <div class="card red"><h3>3.4 Guardrails</h3><p>Jailbreak and indirect prompt injection · 4'</p></div>
+</div>
+<div class="cols-4 mt-s">
+  <div class="card amber"><h3>3.5 Skills + Toolbox</h3><p>Curate tools once, reuse everywhere · 4'</p></div>
+  <div class="card navy"><h3>3.6 Durable + autonomous</h3><p>Background runs, hosted agents, routines · 5'</p></div>
+  <div class="card cyan"><h3>3.7 Observability</h3><p>Traces, dashboard, continuous evaluation · 4'</p></div>
+  <div class="card green"><h3>3.8 Evaluate + optimize</h3><p>Evaluators, red teaming, optimizers · 5'</p></div>
+</div>
+<div class="cols mt-s">
+  <div class="card"><h3>3.9 LangGraph · Deep Agents · LangSmith</h3><p>Bring your framework, keep Foundry's identity, tracing and hosting · 4'</p></div>
+  <div class="card red"><h3>3.10 Human in the loop</h3><p>Approvals that pause durably and resume later · 4'</p></div>
+</div>
+
+<!--
+Ten independent demos, each with its own fallback. Foundry IQ is the one I always show — knowledge is what turns a clever model into a useful agent.
+The rest you can pick by audience: platform teams like Toolbox, observability and guardrails; developers like LangGraph and human-in-the-loop.
+-->
+
+---
+
+# 3.1 · Foundry IQ — knowledge for every agent
+
+<p class="kicker">Knowledge bases <span class="pill ok">GA</span> · agent connection, most source types and portal flow <span class="pill prev">Preview</span></p>
+
+<div class="steps s3">
+  <div><h3>Index once</h3><p>Knowledge base <code>zava-kb</code> on Azure AI Search, fed by three Zava documents.</p></div>
+  <div><h3>Retrieve agentically</h3><p>Plan sub-queries, search them in parallel, rerank.</p></div>
+  <div><h3>Answer with citations</h3><p>One MCP tool call to the knowledge base — shared by every agent.</p></div>
+</div>
+
+<div class="cols mt">
+<div class="callout">Ask: <em>"Plus member, chair arrived damaged, headphones bought 20 days ago — options?"</em> Two documents, several sub-queries, one grounded answer.</div>
+
+```python
+MCPTool(server_label="zava_kb",
+        server_url=f"{SEARCH}/knowledgebases/zava-kb/mcp"
+                   "?api-version=2026-08-01-preview",
+        allowed_tools=["knowledge_base_retrieve"],
+        require_approval="never",
+        project_connection_id="<kb-connection>")
+```
+
+</div>
+
+<!--
+Portal: Build, Knowledge, open zava-kb and its sources; then Agents, demo-iq, Connect to your knowledge base, and ask the Zava Plus question in the playground.
+Point at the single MCP tool call, the sub-queries and the citations. Contrast with File search: per-agent files versus a shared, permission-aware knowledge base.
+Status: the knowledge base object is GA; connecting it to agents and most source types are preview.
+-->
+
+---
+
+# 3.2 · Connectivity — MCP for tools, A2A for agents
+
+<div class="cols-3">
+  <div class="card"><h3>MCP tool <span class="pill ok">GA</span></h3><p>Any remote MCP server; catalog in <strong>Build → Tools</strong>. Credentials live in project connections.</p></div>
+  <div class="card cyan"><h3>A2A tool v1.0 <span class="pill ok">GA</span></h3><p><code>demo-a2a-caller</code> delegates to <code>demo-learn-expert</code> through an A2A connection.</p></div>
+  <div class="card amber"><h3>Incoming A2A <span class="pill prev">Preview</span></h3><p>Expose an agent with an agent card — SDK or REST only today.</p></div>
+</div>
+
+```python
+project.agents.update_details(agent_name="demo-learn-expert",
+    agent_endpoint=AgentEndpointConfig(protocol_configuration=ProtocolConfiguration(
+        responses=ResponsesProtocolConfiguration(), a2a=A2AProtocolConfiguration())),
+    agent_card=AgentCard(version="1.0", skills=[AgentCardSkill(id="foundry-qa", name="Foundry Q&A")]))
+caller_tool = A2ATool(a2a_version=A2AProtocolVersion.V1_0, project_connection_id=conn.id)
+```
+
+<!--
+MCP gives agents tools, A2A lets agents call agents — Foundry or not. Show the A2A tool call in the run details, then the three-bullet summary.
+Optional: Operate, Overview, Register asset — external A2A and HTTP agents can be governed by Foundry Control Plane.
+-->
+
+---
+
+# 3.3 · Model router — one deployment, best-fit model
+
+<div class="cols-60">
+<div>
+
+```python
+for prompt in ["Say hello in French.",
+               "Resource vs project in 2 sentences.",
+               "Reason step by step: which of 3 agents "
+               "deserves a reasoning model?"]:
+    r = openai.responses.create(model="model-router",
+                                input=prompt)
+    print(r.model, r.usage.total_tokens)
+```
+
+</div>
+<div>
+  <div class="card green"><h3>Model router <span class="pill ok">GA</span></h3><p>Version <code>2025-11-18</code>; pool of OpenAI, Anthropic, xAI, DeepSeek and Meta models; Global Standard in Sweden Central.</p></div>
+  <div class="card cyan mt-s"><h3>Balanced · Quality · Cost</h3><p>Pick the mode and the model subset; failover is built in. <code>response.model</code> shows the pick.</p></div>
+</div>
+</div>
+
+<!--
+Three prompts of increasing difficulty; read the model column — small prompts land on small models. Never promise which model wins; comment on what the output shows.
+Routing is a cost lever as much as a quality lever: pair it with evaluations.
+-->
+
+---
+
+# 3.4 · Guardrails and prompt injection
+
+<div class="cols-60">
+<div>
+
+| Control in `demo-guardrail` | Intervention point | Status |
+|---|---|---|
+| Jailbreak (Prompt Shields) | User input | <span class="pill ok">GA</span> |
+| Indirect attack | Tool response | <span class="pill prev">Preview</span> |
+| Task adherence | Tool call | <span class="pill prev">Preview</span> |
+
+<div class="callout warn mt-s">The poisoned <code>zava-supplier-notes.md</code> hides an instruction in an HTML comment — retrieved by the knowledge base, caught at the tool response.</div>
+</div>
+<div>
+  <div class="card red"><h3>What you'll see</h3><ul><li>"Yendys" jailbreak → blocked at user input</li><li>Supplier question → injected text never reaches the user</li><li>Code: <code>400 content_filter</code></li></ul></div>
+  <div class="card mt-s"><h3>Infrastructure as code</h3><p><code>accounts/raiPolicies</code> + <code>raiPolicyName</code> on a deployment.</p></div>
+</div>
+</div>
+
+<!--
+Guardrails are controls: risk times intervention point times action. Assigned to demo-guarded only — never to the app's agent.
+With tools and knowledge, the attack surface is the tool response. Defense in depth: tool-response scanning, approvals for side effects, and content safety at the gateway.
+-->
+
+---
+
+# 3.5 · Skills and reusable tools — Toolbox
+
+<div class="cols-40">
+<div>
+  <div class="card green"><h3>Toolbox <span class="pill ok">GA</span></h3><p>Curated, versioned tools behind one MCP-compatible endpoint — any framework can consume it.</p></div>
+  <div class="card amber mt-s"><h3>Skills <span class="pill prev">Preview</span></h3><p><code>SKILL.md</code> (agentskills.io) — the Demo 1 cost calculation as a reusable skill.</p></div>
+</div>
+
+```python
+project.beta.skills.create(name="foundry-cost-estimate",
+    inline_content=SkillInlineContent(
+        description="Token cost estimates; table + chart.",
+        instructions=skill_md))
+project.toolboxes.create_version(
+    name="demo-foundry-toolbox",
+    tools=[MCPToolboxTool(server_label="microsoft_learn",
+               server_url="https://learn.microsoft.com/api/mcp"),
+           CodeInterpreterToolboxTool()],
+    skills=[ToolboxSkillReference(name="foundry-cost-estimate")])
+```
+
+</div>
+
+<!--
+Platform teams publish the toolbox, product teams consume one endpoint; change a tool or a skill, bump the version, no agent redeploy.
+Show it in Build, Tools or in the Foundry Toolkit for VS Code, attach it to demo-toolbox-agent and ask for a cost estimate: 4.80 dollars a day, 144 for 30 days.
+-->
+
+---
+
+# 3.6 · Durable and autonomous agents
+
+<div class="cols-4">
+  <div class="card"><h3>Background runs <span class="pill ok">GA</span></h3><p><code>background=True</code> → <code>queued</code> → poll <code>responses.retrieve</code>.</p></div>
+  <div class="card cyan"><h3>Hosted agents <span class="pill ok">GA</span></h3><p>Your code in a per-session sandbox with its own Entra identity — <code>azd deploy</code>.</p></div>
+  <div class="card green"><h3>Routines</h3><p>Schedule, timer, GitHub issue or custom event triggers an agent run.</p></div>
+  <div class="card amber"><h3>Durable Task <span class="pill prev">Preview</span></h3><p>Checkpointed Agent Framework sessions on Durable Task Scheduler.</p></div>
+</div>
+
+```python
+project.beta.routines.create_or_update("demo-daily-foundry-digest", enabled=True,
+    triggers={"weekdays-7am": ScheduleRoutineTrigger(cron_expression="0 7 * * 1-5",
+                                                     time_zone="Europe/Paris")},
+    action=InvokeAgentResponsesApiRoutineAction(agent_name="demo-learn-expert",
+        input="List this week's three most important Microsoft Foundry changes."))
+```
+
+<!--
+Autonomy is a trigger plus an identity plus durable state. Show the background call returning queued immediately, the routine and its run history, then the hosted agent with azd ai agent show.
+Routines are exposed through the beta client in the SDK — check their status on Learn before calling them GA.
+-->
+
+---
+
+# 3.7 · Continuous observability
+
+<div class="cols">
+<div>
+  <div class="card"><h3>Traces <span class="pill ok">GA</span></h3><p>Prompt and hosted agents: <code>invoke_agent</code> → <code>execute_tool</code> → model spans.</p></div>
+  <div class="card cyan mt-s"><h3>Monitor + alerts <span class="pill prev">Preview</span></h3><p>Tokens, latency, success rate, evaluation and red-team results per agent.</p></div>
+  <div class="card green mt-s"><h3>Continuous evaluation <span class="pill prev">Preview</span></h3><p>An evaluation rule scores 25 % of live responses.</p></div>
+</div>
+
+```kusto
+dependencies
+| where timestamp > ago(24h)
+| extend op = tostring(
+    customDimensions["gen_ai.operation.name"])
+| where op in ("invoke_agent", "chat",
+               "execute_tool")
+| summarize calls = count(),
+    p95_ms = percentile(duration, 95),
+    failures = countif(success == false)
+    by op
+```
+
+</div>
+
+<!--
+Tracing tells you what happened once; continuous observability tells you every hour whether the agent is still healthy — including quality, scored on sampled live traffic.
+The evaluation rule is project.evaluation_rules.create_or_update with a ContinuousEvaluationRuleAction; the project's managed identity needs Foundry User.
+-->
+
+---
+
+# 3.8 · Evaluation and optimization
+
+<div class="steps">
+  <div><h3>Evaluate <span class="pill ok">GA</span></h3><p><code>builtin.task_adherence</code>, <code>intent_resolution</code>, <code>tool_call_accuracy</code> on ten queries against <code>foundry-guide</code>.</p></div>
+  <div><h3>Compare</h3><p>Two agent versions, same dataset, side by side — promote on evidence.</p></div>
+  <div><h3>Red-team</h3><p>AI Red Teaming Agent (PyRIT): Attack Success Rate before first exposure.</p></div>
+  <div><h3>Optimize</h3><p>Prompt Optimizer; Agent Optimizer <span class="pill prev">Limited preview</span> proposes candidates — you promote.</p></div>
+</div>
+
+```python
+run = openai.evals.runs.create(eval_id=ev.id, name="foundry-guide-latest", data_source={
+    "type": "azure_ai_target_completions",
+    "source": {"type": "file_id", "id": dataset.id},
+    "input_messages": {"type": "template", "template": [{"type": "message", "role": "user",
+        "content": {"type": "input_text", "text": "{{item.query}}"}}]},
+    "target": {"type": "azure_ai_agent", "name": "foundry-guide"}})
+```
+
+<!--
+Same OpenAI-compatible evals API, Foundry's evaluator catalog. Show the T-1 run and its per-row explanations, then Prompt Optimizer on demo-iq, then the Agent Optimizer candidates with the starred winner.
+Close with CI: the microsoft/ai-agent-evals GitHub Action (preview) gates a release on statistically significant changes.
+-->
+
+---
+
+# 3.9 · LangGraph, Deep Agents and LangSmith on Foundry
+
+<div class="cols-40">
+<div>
+  <div class="card"><h3><code>langchain-azure-ai</code></h3><p>Microsoft's integration: keyless Foundry models (<code>azure_ai:</code>), Toolbox tools and skills, tracing, hosting.</p></div>
+  <div class="card cyan mt-s"><h3>Host it</h3><p><code>ResponsesHostServer(graph).run()</code> → <code>azd deploy</code> → Foundry hosted agent.</p></div>
+  <div class="card amber mt-s"><h3>LangSmith</h3><p>Keep it alongside; Azure Marketplace offer.</p></div>
+</div>
+
+```python
+tracer = AzureAIOpenTelemetryTracer(
+    project_endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"],
+    credential=DefaultAzureCredential(),
+    name="demo-langgraph")
+agent = create_agent(model="azure_ai:gpt-5.4-mini",
+                     system_prompt="Concise Azure architect.")
+agent.invoke({"messages": "Why an AI gateway?"},
+             config={"callbacks": [tracer]})
+
+deep = create_deep_agent(model="azure_ai:gpt-5.4-mini",
+                         system_prompt="Plan, take notes, answer.")
+```
+
+</div>
+
+<!--
+No framework lock-in: the LangGraph agent and the Deep Agent run on the same Foundry deployment, keyless, and their spans land in the same Application Insights as the Foundry agents.
+LangChain, LangGraph and Deep Agents are third-party open source; langchain-azure-ai is Microsoft's integration package.
+-->
+
+---
+
+# 3.10 · Human in the loop — durable approvals
+
+<div class="cols-3">
+  <div class="card"><h3>Platform <span class="pill ok">GA</span></h3><p>MCP <code>require_approval="always"</code> → <code>mcp_approval_request</code> → answer with <code>mcp_approval_response</code>.</p></div>
+  <div class="card cyan"><h3>Framework <span class="pill ok">GA</span></h3><p>Agent Framework <code>@tool(approval_mode="always_require")</code>; workflow <code>ctx.request_info(...)</code>.</p></div>
+  <div class="card amber"><h3>Durable <span class="pill prev">Preview</span></h3><p>Pending requests live in checkpoints; on Durable Task Scheduler the wait costs zero compute.</p></div>
+</div>
+
+```python
+@tool(approval_mode="always_require")
+def issue_refund(order_id: str, amount_eur: float) -> str:
+    """Issue a refund to the customer."""
+result = await refund_agent.run("Refund €49 on order Z-1042, the chair arrived broken.")
+for request in result.user_input_requests:   # nothing ran yet — a human decides
+    print(request.function_call.name, request.function_call.arguments)
+```
+
+<!--
+Approve the irreversible, automate the rest. Show the MCP approval request on the Responses API first, then the refund that waits for a human.
+Resume days later: workflow.run(checkpoint_id=..., responses=...). Deep Agents offer the same with interrupt_on and a LangGraph checkpointer.
 -->
 
 ---
