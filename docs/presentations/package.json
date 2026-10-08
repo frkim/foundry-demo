@@ -1,0 +1,25 @@
+{
+  "name": "foundry-session-deck",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Marp slide deck for the 90-minute Microsoft Foundry technical session.",
+  "license": "MIT",
+  "scripts": {
+    "build:html": "marp foundry-session.md --allow-local-files --html --theme-set themes -o dist/foundry-session.html",
+    "build:pdf": "marp foundry-session.md --allow-local-files --html --theme-set themes --pdf --pdf-notes -o dist/foundry-session.pdf",
+    "build:pptx": "marp foundry-session.md --allow-local-files --html --theme-set themes --pptx -o dist/foundry-session.pptx",
+    "build:all": "npm run build:html && npm run build:pdf && npm run build:pptx",
+    "preview": "marp foundry-session.md --allow-local-files --html --theme-set themes --preview"
+  },
+  "devDependencies": {
+    "@marp-team/marp-cli": "4.5.1"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "0.9.12",
+    "basic-ftp": "6.2.1",
+    "katex": "0.18.10"
+  }
+}

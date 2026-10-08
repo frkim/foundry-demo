@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest an improvement to the session kit or the demo.
+title: "feat: <short description>"
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What need does this address? Who benefits (presenter, audience, maintainer)?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change. Note any new dependency, Azure resource, or preview feature.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: standards
+    attributes:
+      label: Standards
+      options:
+        - label: The proposal uses Microsoft Foundry (new) only and keyless (managed identity) access.
+          required: true
+        - label: A preview feature or standards exception, if any, will be recorded in an ADR.

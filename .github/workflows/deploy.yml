@@ -1,0 +1,196 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-dev
+  cancel-in-progress: false
+
+env:
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'swedencentral' }}
+  CONTAINER_APP_NAME: ca-foundrydemo-dev
+  PLACEHOLDER_IMAGE: mcr.microsoft.com/k8se/quickstart:latest
+  IMAGE_REPOSITORY: foundry-demo
+  # Package downloads go through the Microsoft-protected Central Feed Services proxy (never public registries).
+  UV_DEFAULT_INDEX: https://packagefeedproxy.microsoft.io/pypi/simple
+  npm_config_registry: https://packagefeedproxy.microsoft.io/npm/
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: deploy (dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: dev
+      url: ${{ steps.outputs.outputs.app_url }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Azure login (OIDC)
+        if: vars.AZURE_CLIENT_ID != ''
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Temporary exception documented in docs/adr/0003-github-actions-azure-auth-exception.md (expires 2026-12-31).
+      - name: Azure login (service principal secret, ADR-0003 exception)
+        if: vars.AZURE_CLIENT_ID == ''
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Determine current image
+        id: current
+        run: |
+          app_id=$(az resource list --resource-type Microsoft.App/containerApps --name "$CONTAINER_APP_NAME" --query "[0].id" -o tsv)
+          image="$PLACEHOLDER_IMAGE"
+          version="bootstrap"
+          if [ -n "$app_id" ]; then
+            existing_image=$(az resource show --ids "$app_id" --query "properties.template.containers[0].image" -o tsv)
+            existing_version=$(az resource show --ids "$app_id" --query "properties.template.containers[0].env[?name=='APP_VERSION'].value | [0]" -o tsv)
+            image="${existing_image:-$PLACEHOLDER_IMAGE}"
+            version="${existing_version:-bootstrap}"
+          fi
+          echo "Current image: $image (version $version)"
+          {
+            echo "image=$image"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Deploy infrastructure (current image)
+        env:
+          CURRENT_IMAGE: ${{ steps.current.outputs.image }}
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+        run: |
+          az deployment sub create \
+            --name "foundrydemo-${GITHUB_RUN_ID}" \
+            --location "$AZURE_LOCATION" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.dev.bicepparam \
+            --parameters location="$AZURE_LOCATION" containerImage="$CURRENT_IMAGE" appVersion="$CURRENT_VERSION" \
+            --query properties.outputs -o json > infra-outputs.json
+
+      - name: Read deployment outputs
+        id: outputs
+        run: |
+          out() { jq -r --arg k "$1" '.[$k].value' infra-outputs.json; }
+          {
+            echo "resource_group=$(out resourceGroupName)"
+            echo "acr_name=$(out acrName)"
+            echo "acr_login_server=$(out acrLoginServer)"
+            echo "container_app_name=$(out containerAppName)"
+            echo "app_url=https://$(out containerAppFqdn)"
+            echo "foundry_account=$(out foundryAccountName)"
+            echo "foundry_endpoint=$(out foundryEndpoint)"
+            echo "project_endpoint=$(out projectEndpoint)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image with ACR Tasks
+        id: image
+        working-directory: src
+        env:
+          ACR_NAME: ${{ steps.outputs.outputs.acr_name }}
+          ACR_LOGIN_SERVER: ${{ steps.outputs.outputs.acr_login_server }}
+        run: |
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "${IMAGE_REPOSITORY}:${GITHUB_SHA}" \
+            --file Dockerfile \
+            .
+          echo "image=${ACR_LOGIN_SERVER}/${IMAGE_REPOSITORY}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      # Redeploy the template (not `az containerapp update`): the target port and health probes depend on the image.
+      - name: Deploy application image
+        env:
+          NEW_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          az deployment sub create \
+            --name "foundrydemo-${GITHUB_RUN_ID}-app" \
+            --location "$AZURE_LOCATION" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.dev.bicepparam \
+            --parameters location="$AZURE_LOCATION" containerImage="$NEW_IMAGE" appVersion="$GITHUB_SHA" \
+            --query properties.provisioningState -o tsv
+
+      - name: Smoke test
+        env:
+          APP_URL: ${{ steps.outputs.outputs.app_url }}
+        run: |
+          ready=""
+          for attempt in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$APP_URL/health/ready" || true)
+            echo "readiness attempt $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then ready="yes"; break; fi
+            sleep 10
+          done
+          if [ -z "$ready" ]; then
+            echo "::error::$APP_URL/health/ready did not return 200 within 5 minutes"
+            curl -s --max-time 10 "$APP_URL/health/ready" || true
+            exit 1
+          fi
+
+          echo "GET /api/info"
+          curl -fsS --max-time 30 "$APP_URL/api/info" | tee api-info.json | jq .
+          if ! grep -q "$GITHUB_SHA" api-info.json; then
+            echo "::warning::/api/info does not report version $GITHUB_SHA"
+          fi
+
+          echo "POST /api/agent/chat"
+          payload='{"message":"In one sentence, what is Microsoft Foundry?"}'
+          code=""
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o chat.json -w '%{http_code}' --max-time 180 \
+              -X POST -H 'Content-Type: application/json' -d "$payload" "$APP_URL/api/agent/chat" || true)
+            echo "chat attempt $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then break; fi
+            sleep 15
+          done
+          if [ "$code" != "200" ]; then
+            echo "::error::POST /api/agent/chat returned HTTP $code"
+            cat chat.json || true
+            exit 1
+          fi
+          jq '{text, conversation_id, tool_calls, latency_ms}' chat.json
+
+      - name: Job summary
+        if: always()
+        env:
+          APP_URL: ${{ steps.outputs.outputs.app_url }}
+          IMAGE: ${{ steps.image.outputs.image }}
+          RESOURCE_GROUP: ${{ steps.outputs.outputs.resource_group }}
+          FOUNDRY_ACCOUNT: ${{ steps.outputs.outputs.foundry_account }}
+          PROJECT_ENDPOINT: ${{ steps.outputs.outputs.project_endpoint }}
+        run: |
+          {
+            echo "## Foundry demo deployment (dev)"
+            echo ""
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| App URL | ${APP_URL:-n/a} |"
+            echo "| Image | \`${IMAGE:-n/a}\` |"
+            echo "| Resource group | \`${RESOURCE_GROUP:-n/a}\` |"
+            echo "| Foundry resource | \`${FOUNDRY_ACCOUNT:-n/a}\` |"
+            echo "| Project endpoint | ${PROJECT_ENDPOINT:-n/a} |"
+            echo "| Commit | \`${GITHUB_SHA}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

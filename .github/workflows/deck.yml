@@ -1,0 +1,87 @@
+name: deck
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/presentations/**'
+      - '.github/workflows/deck.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-pages
+  cancel-in-progress: false
+
+env:
+  # Package downloads go through the Microsoft-protected Central Feed Services proxy (never public registries).
+  npm_config_registry: https://packagefeedproxy.microsoft.io/npm/
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build (Marp HTML/PDF/PPTX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: docs/presentations
+    env:
+      # Marp renders PDF/PPTX with the Chrome preinstalled on GitHub-hosted Ubuntu runners.
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          registry-url: https://packagefeedproxy.microsoft.io/npm/
+          cache: npm
+          cache-dependency-path: docs/presentations/package-lock.json
+      - run: npm ci
+      - run: npm run build:all
+      - name: Add an index page when the build does not produce one
+        run: |
+          cd dist
+          if [ ! -f index.html ]; then
+            {
+              echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Microsoft Foundry session deck</title></head><body>'
+              echo '<h1>Microsoft Foundry session deck</h1><ul>'
+              find . -maxdepth 1 -type f \( -name '*.html' -o -name '*.pdf' -o -name '*.pptx' \) -printf '%f\n' | sort | while read -r f; do
+                echo "<li><a href=\"$f\">$f</a></li>"
+              done
+              echo '</ul></body></html>'
+            } > index.html
+          fi
+          ls -la
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deck
+          path: docs/presentations/dist/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs/presentations/dist/
+
+  deploy:
+    name: deploy (GitHub Pages)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -1,0 +1,29 @@
+[project]
+name = "foundry-demo-video"
+version = "0.1.0"
+description = "Narrated demo video pipeline for the Foundry Guide app (Azure AI Speech + Playwright + ffmpeg)."
+requires-python = ">=3.12"
+dependencies = [
+  "azure-identity>=1.17",
+  "requests>=2.32",
+  "playwright>=1.47",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.6"]
+
+[tool.uv]
+package = false
+
+# Microsoft CISO policy: resolve packages only through the CFS-protected feed.
+[[tool.uv.index]]
+name = "cfs"
+url = "https://packagefeedproxy.microsoft.io/pypi/simple"
+default = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN"]

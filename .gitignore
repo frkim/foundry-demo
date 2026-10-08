@@ -218,3 +218,37 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------------------
+# foundry-demo additions
+# ---------------------------------------------------------------------------
+
+# Throwaway agent/developer scripts (see AGENTS.md)
+tmp/
+
+# Environment files (keep the documented example)
+.env
+.env.*
+!.env.example
+*.local.*
+
+# Python
+.venv/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Node / build output
+node_modules/
+dist/
+docs/presentations/dist/
+
+# The Python "lib/" rule above must not hide frontend source folders
+!src/web/src/lib/
+
+# Video pipeline output
+scripts/video/out/
+
+# Azure CLI / azd local state
+.azure/
