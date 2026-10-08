@@ -1,0 +1,4 @@
+# Marp CLI configuration for the Microsoft Foundry session deck.
+html: true
+allowLocalFiles: true
+themeSet: ./themes

@@ -1,0 +1,329 @@
+1
+00:00:00,000 --> 00:00:03,395
+Microsoft Foundry: from
+prompt to production agent.
+
+2
+00:00:03,445 --> 00:00:07,314
+In the next few minutes, we'll
+walk through Foundry Guide,
+
+3
+00:00:07,364 --> 00:00:14,880
+a small web app running on Azure Container Apps and backed
+by a prompt agent in Microsoft Foundry Agent Service.
+
+4
+00:00:14,930 --> 00:00:20,420
+You'll see grounded answers, real code
+execution, a side-by-side model comparison,
+
+5
+00:00:20,470 --> 00:00:21,501
+and run history.
+
+6
+00:00:21,551 --> 00:00:23,190
+And all of it is keyless.
+
+7
+00:00:24,118 --> 00:00:26,600
+Let's start with the architecture.
+
+8
+00:00:26,650 --> 00:00:33,229
+A Vue front end and a FastAPI back end run in
+a single container on Azure Container Apps.
+
+9
+00:00:33,279 --> 00:00:38,965
+The back end calls our Foundry project
+with a user-assigned managed identity.
+
+10
+00:00:39,015 --> 00:00:41,274
+There are no API keys anywhere,
+
+11
+00:00:41,324 --> 00:00:45,817
+and local authentication is
+disabled on the Foundry resource.
+
+12
+00:00:45,867 --> 00:00:51,850
+On the right are the live deployment
+details: the project runs in Sweden Central,
+
+13
+00:00:51,900 --> 00:00:57,213
+with gpt-5.4-mini as the agent model
+and gpt-5.4-nano as the fast model.
+
+14
+00:00:57,263 --> 00:01:02,427
+The foundry-guide agent has two tools:
+the Microsoft Learn MCP server,
+
+15
+00:01:02,477 --> 00:01:03,991
+and Code Interpreter.
+
+16
+00:01:04,041 --> 00:01:08,311
+Traces flow to Application
+Insights through OpenTelemetry.
+
+17
+00:01:09,271 --> 00:01:10,251
+Now, the agent.
+
+18
+00:01:10,301 --> 00:01:13,889
+I'll ask a question that
+needs current documentation:
+
+19
+00:01:13,939 --> 00:01:19,930
+what is the difference between prompt agents
+and hosted agents in Foundry Agent Service,
+
+20
+00:01:19,980 --> 00:01:22,058
+with Microsoft Learn citations.
+
+21
+00:01:22,108 --> 00:01:26,727
+The agent decides on its own to call
+the Microsoft Learn MCP server.
+
+22
+00:01:26,777 --> 00:01:30,777
+That server is public, read-only,
+and needs no credentials,
+
+23
+00:01:30,827 --> 00:01:33,866
+so we let the agent call it without approval.
+
+24
+00:01:33,916 --> 00:01:37,230
+For any tool that writes
+data, keep approvals on.
+
+25
+00:01:38,191 --> 00:01:39,371
+Here's the answer.
+
+26
+00:01:39,421 --> 00:01:44,907
+Prompt agents combine instructions, a
+model, and tools, fully managed by Foundry.
+
+27
+00:01:44,957 --> 00:01:49,623
+Hosted agents run your own code and
+framework in a managed container.
+
+28
+00:01:49,673 --> 00:01:54,339
+Look at the chips at the top: these
+are the MCP calls the agent made.
+
+29
+00:01:54,389 --> 00:01:57,620
+And the links point back to learn.microsoft.com.
+
+30
+00:01:57,670 --> 00:01:59,124
+Grounded, not guessed.
+
+31
+00:01:59,174 --> 00:02:03,908
+Underneath, you can see the latency
+and the token usage for this turn.
+
+32
+00:02:04,823 --> 00:02:05,736
+Next, numbers.
+
+33
+00:02:05,786 --> 00:02:11,103
+Language models are unreliable at
+arithmetic, so the agent's instructions say:
+
+34
+00:02:11,153 --> 00:02:13,924
+use Code Interpreter for any calculation.
+
+35
+00:02:13,974 --> 00:02:18,052
+I'm asking for the cost of two
+thousand conversations a day,
+
+36
+00:02:18,102 --> 00:02:22,868
+each with fifteen hundred input tokens
+and five hundred output tokens,
+
+37
+00:02:22,918 --> 00:02:30,436
+at illustrative prices of forty cents per million input
+tokens and one dollar sixty per million output tokens.
+
+38
+00:02:30,486 --> 00:02:34,977
+These are not list prices, so always
+check the Azure pricing page.
+
+39
+00:02:35,027 --> 00:02:38,623
+The agent now writes Python
+and runs it in a sandbox.
+
+40
+00:02:39,526 --> 00:02:42,799
+And here is the result,
+computed rather than guessed:
+
+41
+00:02:42,849 --> 00:02:47,502
+two dollars and eighty cents per day,
+eighty-four dollars over thirty days,
+
+42
+00:02:47,552 --> 00:02:50,762
+and one thousand and twenty-two
+dollars over a year.
+
+43
+00:02:50,812 --> 00:02:53,897
+The Code Interpreter chip
+shows the tool that ran,
+
+44
+00:02:53,947 --> 00:02:59,352
+and the bar chart is an image generated in
+the sandbox and served back through the app.
+
+45
+00:02:59,402 --> 00:03:01,860
+This is the same conversation as before:
+
+46
+00:03:01,910 --> 00:03:05,371
+Foundry keeps the conversation
+state on the server side.
+
+47
+00:03:06,232 --> 00:03:09,500
+Which model should power an agent like this?
+
+48
+00:03:09,550 --> 00:03:10,556
+Let's measure.
+
+49
+00:03:10,606 --> 00:03:12,441
+On the Model compare tab,
+
+50
+00:03:12,491 --> 00:03:18,927
+the same prompt goes to two Foundry deployments
+in parallel through the Responses API:
+
+51
+00:03:18,977 --> 00:03:21,265
+gpt-5.4-mini, and gpt-5.4-nano.
+
+52
+00:03:21,315 --> 00:03:23,452
+The prompt: in three bullets,
+
+53
+00:03:23,502 --> 00:03:28,052
+explain why teams put an AI
+gateway in front of their models.
+
+54
+00:03:28,916 --> 00:03:34,850
+Two answers, side by side, each with its
+latency and its input and output tokens,
+
+55
+00:03:34,900 --> 00:03:37,658
+and a trophy for the fastest response.
+
+56
+00:03:37,708 --> 00:03:41,278
+For many tasks, the smaller
+model is good enough.
+
+57
+00:03:41,328 --> 00:03:45,785
+The only way to know is to
+measure, ideally with evaluations.
+
+58
+00:03:46,669 --> 00:03:51,922
+Every call we just made lands in Run
+history: the time, the kind of run,
+
+59
+00:03:51,972 --> 00:03:56,342
+the agent or model, latency,
+tokens, tool calls, and status.
+
+60
+00:03:56,392 --> 00:04:01,056
+I can sort by latency, or search
+for just the model comparisons.
+
+61
+00:04:01,106 --> 00:04:03,487
+It's kept in memory for the demo.
+
+62
+00:04:03,537 --> 00:04:09,748
+In production, the same signals live in
+Application Insights as OpenTelemetry traces.
+
+63
+00:04:10,614 --> 00:04:15,745
+One last touch for the room: a dark
+theme that projects well on a big screen,
+
+64
+00:04:15,795 --> 00:04:17,899
+and is remembered across visits.
+
+65
+00:04:17,949 --> 00:04:19,110
+And back to light.
+
+66
+00:04:22,922 --> 00:04:26,874
+To recap: a prompt agent in
+Microsoft Foundry Agent Service,
+
+67
+00:04:26,924 --> 00:04:32,010
+grounded in Microsoft Learn through MCP,
+doing real math in Code Interpreter,
+
+68
+00:04:32,060 --> 00:04:36,412
+called keylessly from Azure Container
+Apps, with every run traced.
+
+69
+00:04:36,462 --> 00:04:39,213
+The source code, the Bicep infrastructure,
+
+70
+00:04:39,263 --> 00:04:44,749
+and the GitHub Actions pipeline are all in
+the repository linked on the About page.
+
+71
+00:04:44,799 --> 00:04:46,083
+Thanks for watching.

@@ -1,0 +1,17 @@
+# Keep the build context small and free of local artefacts / secrets.
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/.env
+**/.env.*
+**/*.local
+**/.vite
+api/tests
+Dockerfile
+.dockerignore

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/frkim/foundry-demo/security/advisories/new
+    about: Report vulnerabilities privately — never in a public issue.
+  - name: Microsoft Foundry documentation
+    url: https://learn.microsoft.com/azure/foundry/what-is-foundry
+    about: Questions about Microsoft Foundry itself.
+  - name: AI coding standards
+    url: https://github.com/frkim/ai-coding-standards
+    about: The standards this repository follows.
