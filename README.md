@@ -28,6 +28,11 @@ The AI Gateway segment (Azure API Management in front of Foundry: token limits, 
 demonstrated with [frkim/apim-demo](https://github.com/frkim/apim-demo) and
 [Azure-Samples/AI-Gateway](https://github.com/Azure-Samples/AI-Gateway).
 
+**Demo 3 — Foundry capabilities** adds ten short, independent demos: Foundry IQ + Knowledge, MCP/A2A connectivity,
+model router, guardrails and prompt injection, skills and reusable tools, durable and autonomous agents, continuous
+observability, evaluation and optimization, LangSmith/LangGraph/Deep Agents, and human in the loop — see the
+[demo runbook](docs/session/demo-runbook.md#demo-3--foundry-capabilities-ten-short-demos).
+
 ### The Foundry Guide demo
 
 - **Agent chat** — the `foundry-guide` agent (`gpt-5.4-mini`) answers Foundry questions using the
