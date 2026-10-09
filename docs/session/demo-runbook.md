@@ -430,6 +430,11 @@ reuse, autonomy, observability, quality, open-source frameworks, and human contr
 Everything below is additive to Demo 1 and stays inside `rg-foundrydemo-dev-swc` (plus one Azure AI Search service).
 Labels in the new Foundry portal move often — the paths below were checked against Microsoft Learn in October 2026.
 
+> **Live-tested.** Every demo below was run end to end against `proj-foundrydemo-dev` (Sweden Central) with the
+> `azure-ai-projects` 2.8 SDK. What worked is stated in each **Expected** block; what is portal-only or untested is
+> marked **[verify]**. The RBAC steps below were each required — role propagation takes up to ~5 minutes, so assign
+> roles at T-1, not minutes before.
+
 ```powershell
 az login
 az account set --subscription '<subscription-id>'
@@ -444,15 +449,18 @@ az cognitiveservices account deployment create -g $rg -n $acct `
 
 # 3.1 — Azure AI Search, Basic tier (agentic retrieval needs Basic or higher; this one costs money while it exists)
 az search service create -g $rg -n "srch-foundrydemo-dev-$((Get-Random -Maximum 99999))" --sku basic `
-  --location swedencentral --identity-type SystemAssigned --auth-options aadOrApiKey
+  --location swedencentral --identity-type SystemAssigned --auth-options aadOrApiKey `
+  --aad-auth-failure-mode http401WithBearerChallenge   # required together with aadOrApiKey
 ```
 
 | Prepare | How | Used by |
 | --- | --- | --- |
 | Python snippets | Save each snippet in the git-ignored `tmp/scripts/` folder and run it from `src/api` with `uv run python ../../tmp/scripts/<file>.py` — that uses the pinned `azure-ai-projects` 2.8 and `openai` from `uv.lock` | All |
 | Framework virtual environment | `uv venv tmp/demo3/.venv` then `uv pip install --python tmp/demo3/.venv --prerelease=allow --default-index https://packagefeedproxy.microsoft.io/pypi/simple agent-framework agent-framework-durabletask "langchain-azure-ai[opentelemetry,hosting]" deepagents langchain` (protected feed only) | 3.6, 3.9, 3.10 |
-| Knowledge base `zava-kb` | Foundry portal → project → **Build** → **Knowledge** → connect the search service → **Add knowledge base** → knowledge source **Azure Blob Storage** (or upload) with the three files in [`demo3/knowledge/`](demo3/knowledge/) | 3.1, 3.4 |
-| RBAC for Foundry IQ | Project managed identity: **Search Index Data Reader** on the search service. Search service identity: **Cognitive Services User** on the Foundry resource (only if the knowledge base uses an LLM for planning or answers) | 3.1 |
+| Knowledge base `zava-kb` | Foundry portal → project → **Build** → **Knowledge** → connect the search service → **Add knowledge base** → knowledge source **Azure Blob Storage** (or upload) with the three files in [`demo3/knowledge/`](demo3/knowledge/). **Verified scripted alternative (no storage account):** with `azure-search-documents` 12.1.0b2, upload the three files to an index `zava-docs`, then create a `SearchIndexKnowledgeSource` `zava-ks` and a `KnowledgeBase` `zava-kb` (model `gpt-5.4-mini`, low reasoning effort, `extractiveData` output). Then create the project connection `zava-kb-conn` (ARM `…/projects/<proj>/connections/zava-kb-conn`, API `2025-10-01-preview`, category `RemoteTool`, `authType` `ProjectManagedIdentity`, audience `https://search.azure.com/`, target = the knowledge base's MCP endpoint `https://<search>.search.windows.net/knowledgebases/zava-kb/mcp?api-version=2026-08-01-preview`) | 3.1, 3.4 |
+| RBAC for Foundry IQ | Project managed identity: **Search Index Data Reader** on the search service. Search service identity: **Cognitive Services User** + **Cognitive Services OpenAI User** on the Foundry resource (the knowledge base calls the model for planning). Your own identity needs **Search Service Contributor** + **Search Index Data Contributor** to create the index and knowledge base | 3.1 |
+| RBAC for A2A | The *caller* agent's identity (shown in the agent's **Details**) needs **Foundry Agent Consumer** on the project. Until the role propagates the A2A tool fails with a `404` "agent card" error | 3.2 |
+| RBAC for continuous evaluation | Project managed identity: **Foundry User** on the project. Without it the rule is rejected with "lacks `AIServices/assets/read`" | 3.7 |
 | Guardrail `demo-guardrail` | Portal → **Build** → **Guardrails** → **Create guardrail** (see 3.4) and assign it to `demo-guarded` only | 3.4 |
 | Pre-run evaluation + optimizer | Run the 3.8 evaluation and one Agent Optimizer job the day before — they take minutes; show the results live | 3.8 |
 | Continuous evaluation rule | Create the 3.7 rule at least one hour before, then send 10–20 chats through the app so charts are populated | 3.7 |
@@ -509,7 +517,7 @@ The same wiring in code (connection created by step 2 or by the portal **Connect
 from azure.ai.projects.models import MCPTool, PromptAgentDefinition
 
 SEARCH = "https://<search-service>.search.windows.net"
-KB_MCP = f"{SEARCH}/knowledgebases/zava-kb/mcp?api-version=2026-08-01-preview"  # [verify] api-version
+KB_MCP = f"{SEARCH}/knowledgebases/zava-kb/mcp?api-version=2026-08-01-preview"  # verified live
 
 agent = project.agents.create_version(
     agent_name="demo-iq",
@@ -522,7 +530,7 @@ agent = project.agents.create_version(
                 server_url=KB_MCP,
                 require_approval="never",
                 allowed_tools=["knowledge_base_retrieve"],
-                project_connection_id="<kb-connection-name>",
+                project_connection_id="zava-kb-conn",  # the project connection name
             )
         ],
     ),
@@ -586,8 +594,18 @@ secret-free.
    )
    ```
 
-3. Portal → **Build** → **Tools** → **Connect tool** → **Custom** → **Agent2Agent (A2A)**: name `a2a-learn-expert`,
-   endpoint = the A2A URL of `demo-learn-expert` (agent details pane) **[verify]**, authentication = agent identity.
+3. Create the A2A connection `a2a-learn-expert`. Portal: **Build** → **Tools** → **Connect tool** → **Custom** →
+   **Agent2Agent (A2A)**. **Verified scripted path** — an ARM `PUT` on the project (`az rest`, API
+   `2025-10-01-preview`) at `…/accounts/<acct>/projects/proj-foundrydemo-dev/connections/a2a-learn-expert`:
+
+   ```json
+   {"properties": {"category": "RemoteA2A", "authType": "AgenticIdentityToken", "group": "ServicesAndApps",
+     "target": "https://<acct>.services.ai.azure.com/api/projects/proj-foundrydemo-dev/agents/demo-learn-expert/endpoint/protocols/a2a",
+     "audience": "https://ai.azure.com", "isSharedToAll": true, "credentials": {}, "metadata": {"ApiType": "Azure"}}}
+   ```
+
+   Then grant the **caller agent's identity** **Foundry Agent Consumer** on the project (RBAC table above). The agent
+   card is served at `…/a2a/agentCard/v1.0`.
 4. Create the caller and ask it something only the expert can answer:
 
    ```python
@@ -611,9 +629,11 @@ secret-free.
 **Say:** "MCP for tools, A2A for agents — open protocols, but the credentials live in project connections and every
 hop is traced."
 
-**Expected:** an A2A tool call in the run details, then a three-bullet summary of the expert's grounded answer.
+**Expected:** an A2A tool call in the run details (the output item type is shown as `a2a_preview_call`, even with
+`A2AProtocolVersion.V1_0`), then a three-bullet summary of the expert's grounded answer.
 
-**Fallback:** if the A2A connection fails, show the MCP catalog flow and the agent card JSON returned by
+**Fallback:** if the A2A connection fails — a `404` mentioning the agent card means the **Foundry Agent Consumer** role
+has not propagated yet (wait ~5 min) — show the MCP catalog flow and the agent card JSON returned by
 `update_details`; the A2A slide covers the rest.
 
 ### 3.3 — Model router (3 min)
@@ -644,7 +664,9 @@ still see which model answered.
 **Say:** "Routing is a cost lever as much as a quality lever. Pair it with evaluations — measure that the cheaper route
 is still good enough for your task."
 
-**Expected:** different underlying model names per prompt (exact picks vary; never promise which model wins).
+**Expected:** different underlying model names per prompt (exact picks vary; never promise which model wins). Observed
+live: `FW-GLM-5.3` for the hello prompt and `FW-GLM-5.3-Flash` for the other two (28 / 530 / 8,654 tokens) — the
+router is not limited to OpenAI models, which is itself a talking point.
 
 **Fallback:** deployment missing or quota error → open the `model-router` deployment in the portal playground, which
 shows the selected model per turn; or show the rehearsal output.
@@ -690,13 +712,18 @@ shows the selected model per turn; or show the rehearsal output.
 **Say:** "With tools and knowledge, the attack surface is the tool response — a web page, a PDF, a supplier note.
 Scan tool responses, keep side-effecting tools behind approval, and add content safety at the gateway (Demo 2)."
 
-**Expected:** the jailbreak is blocked at user input; the supplier question is either answered without the injected
-"password reset" text or blocked at tool response, depending on the control's action. The playground names the risk
-and the intervention point.
+**Expected (observed live):** the jailbreak is blocked at user input with HTTP 400 `content_filter` — on **both**
+`demo-guarded` and `demo-iq`, because the default model guardrail already blocks jailbreaks, so the contrast in step 5
+shows a block twice (say so; the agent guardrail adds the tool-response control and your own thresholds). The
+supplier question was answered normally ("Alpenholz 35 days, VoltWare 14 days") without the injected text — the model
+resisted on its own and the tool-response control did not need to fire. The tool-response intervention point is
+**portal-only preview** (not configurable through the ARM policy used here **[verify]**).
 
 **Fallback:** if the preview tool-response control isn't available in the region, demo the jailbreak only (GA) and
 show the poisoned document on GitHub to explain the indirect attack. Infrastructure as code: guardrails are
-`Microsoft.CognitiveServices/accounts/raiPolicies` resources, attached to model deployments with `raiPolicyName`.
+`Microsoft.CognitiveServices/accounts/raiPolicies` resources (API `2025-06-01`, `basePolicyName`
+`Microsoft.DefaultV2`) attached to model deployments with `raiPolicyName`. To attach one to an **agent** in code, pass
+`RaiConfig(rai_policy_name=<full ARM resource id>)` in the definition — a bare policy name is rejected with HTTP 400.
 
 ### 3.5 — Skills and reusable tools (4 min)
 
@@ -746,7 +773,9 @@ package *how* to do a task — versioned centrally and attachable to a toolbox.
 version — no agent redeploy."
 
 **Expected:** a toolbox version `1`; the agent answers via the toolbox (Code Interpreter run, table: 6M input + 1.5M
-output tokens a day → $4.80/day, $144/30 days).
+output tokens a day → $4.80/day, $144/30 days). Verified live: `project.beta.skills.create` (skill
+`foundry-cost-estimate` v1) and `project.toolboxes.create_version` (`demo-foundry-toolbox` v1). Attaching the toolbox
+to `demo-toolbox-agent` and asking the cost question was **not** run **[verify]**.
 
 **Fallback:** if the Skills preview API fails, publish the toolbox without `skills=` and show `SKILL.md` on GitHub;
 if attaching in the portal fails, show the toolbox's `tools/list` in the VS Code toolkit.
@@ -806,8 +835,9 @@ code — Agent Framework, LangGraph… — in a Foundry-managed, per-session san
 **Say:** "Autonomy is a trigger plus an identity plus durable state. Foundry gives you the trigger (routines), the
 identity and sandbox (hosted agents), and the state (conversations, checkpoints)."
 
-**Expected:** `queued` → `completed` within 20–60 s; routine run history with one row per trigger and a response id;
-the hosted agent listed with its protocols.
+**Expected (observed live):** `queued` → `completed` in ~16 s (about 2,000 words); the routine is created
+(`authorization.identity: agent`, cron `0 7 * * 1-5`) and `list_runs` is empty until its first trigger — so create it
+a day ahead (or trigger it once) if you want run-history rows to show. The hosted agent is listed with its protocols.
 
 **Fallback:** background call slow → narrate the polling loop and move on, then show the result at the end of the demo
 block. Routines not available in the project → show the slide and the routine definition above. No hosted agent
@@ -876,7 +906,14 @@ agent is still healthy — latency, tokens, success rate, *and quality* scored o
 **Say:** "OpenTelemetry end to end — Foundry's server-side traces, the app's own spans, and continuous evaluation land
 in the same Application Insights. The project's managed identity needs Foundry User to run the evaluations."
 
-**Expected:** populated Monitor charts, a nested trace, the rule listed, KQL results grouped by operation.
+**Expected (observed live):** the continuous evaluation rule `foundry-guide-continuous` is created and enabled; the KQL
+returns rows per operation and agent (for example `invoke_agent` / `chat` / `execute_tool` for `foundry-guide`,
+`demo-iq`, `demo-hitl`, with p95 latency and token sums — the token sums are only populated on `chat` spans). The
+Monitor dashboard, trace view and alerts are portal-only **[verify]**.
+
+> **KQL from the shell:** `az monitor app-insights query` strips double quotes in PowerShell — use single-quoted KQL
+> strings (`customDimensions['gen_ai.operation.name']`, `success == 'False'` — `success` is a string column) when you
+> run the query from the CLI instead of the portal.
 
 **Fallback:** empty charts (ingestion delay) → widen the time range or use rehearsal screenshots; null token columns →
 run `dependencies | where customDimensions has "gen_ai" | take 5` and adjust the attribute names live (the GenAI
@@ -941,7 +978,9 @@ versions, red-team before exposure — then let Foundry propose better instructi
 **Say:** "Evaluate on every agent version, red-team before first exposure, and let the optimizer do the tedious prompt
 iterations — but you promote, not the tool."
 
-**Expected:** an evaluation report with three evaluators over ten queries; optimizer candidates with scores.
+**Expected (observed live):** an evaluation run over ten queries of the real `foundry-guide` agent, status `completed`,
+**10 / 10 passed**, with a `report_url` to open in the portal (the run takes a few minutes). The Prompt Optimizer and
+Agent Optimizer are portal-only/limited preview and were **not** exercised **[verify]**.
 
 **Fallback:** evaluation still running → show the T-1 run; optimizer not available in the subscription → Prompt
 Optimizer only, or the slide.
@@ -997,8 +1036,10 @@ into the same Application Insights, and hosting as a Foundry hosted agent.
 **Say:** "Bring your framework; keep Foundry's identity, models, tools, tracing, and hosting. One Application Insights
 for agents built with Foundry, Agent Framework, or LangGraph."
 
-**Expected:** two answers in the terminal; a `demo-langgraph` trace in Application Insights (and in Azure Monitor →
-**Investigate** → **Agents**, preview) within a few minutes.
+**Expected (observed live):** two answers in the terminal (the Deep Agent also writes
+`/tmp/foundry_support_agent_rollout_plan.md` to its virtual file system); a `demo-langgraph` trace
+(`invoke_agent` + `chat`) in Application Insights within minutes. The snippets ran unchanged on `langchain` /
+`deepagents` / `langchain-azure-ai` from the protected feed; `azure_ai:gpt-5.4-mini` model strings work.
 
 **Fallback:** package install blocked or missing on the protected feed → stop and show the code (do not switch to a
 public index); tracing delay → show the trace from rehearsal.
@@ -1075,8 +1116,10 @@ step (`request_info`); **durability** lets that pause last days at zero compute 
 **Say:** "Approve the irreversible, automate the rest. The approval is a durable, auditable event — not a person
 watching a console."
 
-**Expected:** step 1 prints an `mcp_approval_request` (server `microsoft_learn`, tool name, arguments) and, after
-approval, a cited answer; step 2 prints `NEEDS APPROVAL: issue_refund {...}` and does **not** run the refund.
+**Expected (observed live):** step 1 prints an `mcp_approval_request` (server `microsoft_learn`, tool
+`microsoft_docs_search`, arguments) and, after approval, `mcp_call` + `message` with a cited answer; step 2 prints
+`NEEDS APPROVAL: issue_refund {"order_id":"Z-1042","amount_eur":49}` (the agent's `text` is empty) and does **not** run
+the refund. The durable-checkpoint part (step 3) and the Durable Task extension were not run **[verify]**.
 
 **Fallback:** Learn MCP slow → show the printed approval request from rehearsal; framework install issue → walk
 through the code on screen and the human-in-the-loop slide.

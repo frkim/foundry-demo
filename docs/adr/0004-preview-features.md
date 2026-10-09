@@ -37,6 +37,13 @@ shows these preview capabilities live on separate `demo-*` agents in the same pr
 | Agent Optimizer (limited preview); some agent evaluators | 3.8 | Evaluation run (GA) and Prompt Optimizer |
 | Trace-based evaluation of LangGraph agents; Azure Monitor **Agents** view | 3.9 | Traces in Application Insights |
 
+Live-test status (October 2026, Sweden Central, `azure-ai-projects` 2.8): the SDK/REST paths for 3.1–3.3, 3.5, 3.6
+(background responses and creating a routine), 3.7 (continuous evaluation rule and KQL), 3.8 (evaluation run), 3.9 and
+3.10 (MCP approval and Agent Framework approval) were run end to end. **Not run (portal-only or limited preview):**
+the tool-response guardrail intervention point, Agent Optimizer, Prompt Optimizer, the Monitor dashboard and alerts,
+hosted-agent deployment and the Durable Task extension — these stay marked **[verify]** in the runbook.
+Provisioning prerequisites discovered live (RBAC roles, ARM-created connections) are in the runbook's Demo 3 setup.
+
 Rules:
 
 - The app must **start and serve** even if the agent cannot be created — `/health/ready` reports the agent status
